@@ -31,7 +31,15 @@ def code_exec(code: str) -> str:
     if not _HAS_DOCKER:
         return "Error: docker SDK not available in this environment."
 
-    client = docker.from_env()
+    #client = docker.from_env()
+    try:
+        client = docker.from_env()
+    except Exception:
+        return (
+            "Error: no Docker daemon available in this environment. "
+            "This tool requires Docker and isn't available in the public demo — "
+            "see the README for running it locally."
+        )
     container = None
     result = {"output": None, "error": None, "exit_code": None}
 
