@@ -1,5 +1,7 @@
 # LLM Agent From Scratch
 
+### In a nutshel : Eh i skipped LangChan
+---
 A tool-using ReAct (Reason + Act) agent built **without any agent framework** — no
 LangChain, no LangGraph, no CrewAI. The reasoning loop, tool-schema generation,
 memory, evaluation harness, tracing, guardrails, and sandboxed code execution are
