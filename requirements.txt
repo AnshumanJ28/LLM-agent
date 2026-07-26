@@ -1,0 +1,11 @@
+groq
+python-dotenv
+docker
+# faiss-cpu
+# sentence-transformers
+tavily-python
+fastapi
+uvicorn
+streamlit
+pytest
+numpy

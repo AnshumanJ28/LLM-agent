@@ -1,0 +1,40 @@
+# Environment / secrets
+.env
+docker/.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.Python
+build/
+dist/
+*.egg
+.venv/
+venv/
+env/
+
+# pytest
+.pytest_cache/
+
+# Streamlit
+.streamlit/
+
+# Traces (runtime output, not source)
+traces/
+*.jsonl
+
+# Docker
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

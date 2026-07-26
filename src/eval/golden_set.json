@@ -1,0 +1,26 @@
+[
+  {
+    "id": "calc_1",
+    "task": "What is 17 * (3 + 5)?",
+    "expected_tool": "calculator",
+    "expected_answer_contains": "136"
+  },
+  {
+    "id": "calc_2",
+    "task": "Compute (100 / 4) - 7",
+    "expected_tool": "calculator",
+    "expected_answer_contains": "18"
+  },
+  {
+    "id": "search_1",
+    "task": "Search the web for the current stable version of Python and tell me what it is.",
+    "expected_tool": "web_search",
+    "expected_answer_contains": null
+  },
+  {
+    "id": "code_1",
+    "task": "Run Python code that prints the sum of the first 10 natural numbers.",
+    "expected_tool": "code_exec",
+    "expected_answer_contains": "55"
+  }
+]
