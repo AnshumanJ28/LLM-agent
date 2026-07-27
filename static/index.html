@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Agent — Chat</title>
+<style>
+  :root {
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+
+  /* ---------- DARK THEME (black + emerald + orange) ---------- */
+  html[data-theme="dark"] {
+    --bg: #070907;
+    --surface: #0F1512;
+    --bubble-user: #16221B;
+    --bubble-agent: #0C110E;
+    --border: #1E2C24;
+    --code-bg: #0A0F0C;
+    --accent: #10B981;
+    --accent-dim: #0B7A56;
+    --accent-secondary: #F5A623;
+    --accent-text: #04160E;
+    --text: #E7EFE9;
+    --text-dim: #6E8478;
+    --error: #E0645F;
+  }
+
+  /* ---------- LIGHT THEME (silver-blue with gold hints) ---------- */
+  html[data-theme="light"] {
+    --bg: #F3F5F8;
+    --surface: #FFFFFF;
+    --bubble-user: #E7ECF3;
+    --bubble-agent: #FFFFFF;
+    --border: #D7DEE7;
+    --code-bg: #EEF1F6;
+    --accent: #6E8CAE;
+    --accent-dim: #5A7690;
+    --accent-secondary: #C9A227;
+    --accent-text: #FFFFFF;
+    --text: #202632;
+    --text-dim: #74829A;
+    --error: #C0392B;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    display: flex;
+    justify-content: center;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  /* thin, consistent scrollbars everywhere */
+  ::-webkit-scrollbar { width: 7px; height: 7px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
+  * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+  .app {
+    width: 100%;
+    max-width: 880px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--accent-text);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: -0.5px;
+    transition: background 0.2s ease;
+  }
+  .avatar.thinking { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+  .header-text { flex: 1; }
+  .header-text h1 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text);
+  }
+  .header-text p {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin: 2px 0 0;
+  }
+
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .theme-toggle:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+  main {
+    flex: 1;
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    overflow-y: auto;
+  }
+
+  .empty-state {
+    margin: auto;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+    max-width: 340px;
+    line-height: 1.6;
+  }
+
+  .turn { display: flex; flex-direction: column; gap: 10px; }
+
+  .msg-row { display: flex; }
+  .msg-row.user { justify-content: flex-end; }
+  .msg-row.agent { justify-content: flex-start; gap: 10px; }
+
+  .bubble {
+    max-width: 92%;
+    width: fit-content;
+    padding: 11px 15px;
+    border-radius: 14px;
+    font-size: 14.5px;
+    line-height: 1.55;
+    overflow-wrap: break-word;
+  }
+  .bubble.user {
+    background: var(--bubble-user);
+    border: 1px solid var(--border);
+    border-bottom-right-radius: 4px;
+  }
+  .bubble.agent {
+    background: var(--bubble-agent);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+    flex: 1;
+    min-width: 0; /* required so code blocks can shrink/scroll instead of overflowing */
+  }
+
+  .msg-text { white-space: pre-wrap; display: block; }
+
+  /* ---------- code block rendering ---------- */
+  .code-block-wrap {
+    margin: 10px 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--code-bg);
+  }
+  .code-lang {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
+    color: var(--accent-secondary);
+    background: var(--surface);
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  pre.code-block {
+    margin: 0;
+    padding: 12px 14px;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  pre.code-block code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text);
+    white-space: pre;
+  }
+
+  .agent-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+    transition: color 0.2s ease;
+  }
+
+  .status-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .dot.thinking { animation: pulse 0.9s ease-in-out infinite; }
+  .dot.error { background: var(--error); }
+
+  .meta-row {
+    display: flex;
+    gap: 14px;
+    margin-left: 38px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-dim);
+  }
+  .meta-row span b { color: var(--accent-secondary); font-weight: 600; }
+  .incomplete-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent-secondary);
+    margin-left: 38px;
+  }
+
+  .composer-wrap {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 14px 24px 10px;
+  }
+
+  .examples { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .example-chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 11px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .example-chip:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+  .input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 6px 6px 6px 14px;
+  }
+  .input-row:focus-within { border-color: var(--accent-dim); }
+
+  input[type="text"] {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    padding: 10px 0;
+    outline: none;
+  }
+  input[type="text"]::placeholder { color: var(--text-dim); }
+
+  button {
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    border-radius: 10px;
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-size: 13px;
+    padding: 10px 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  button:disabled { background: var(--accent-dim); opacity: 0.7; cursor: not-allowed; }
+
+  footer {
+    text-align: center;
+    padding: 10px 24px 18px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--bg);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="avatar" id="avatar">◕‿◕</div>
+    <div class="header-text">
+      <h1>Agent</h1>
+      <p>hand-rolled reasoning loop — no LangChain</p>
+    </div>
+    <div class="theme-toggle" id="theme-toggle">
+      <span id="theme-icon">☾</span>
+      <span id="theme-label">dark</span>
+    </div>
+  </header>
+
+  <main id="log">
+    <p class="empty-state" id="placeholder">Ask it something. It'll reason step by step and call tools — calculator, web search, or code execution — before answering.</p>
+  </main>
+
+  <div class="composer-wrap">
+    <div class="examples">
+      <span class="example-chip" data-task="What is 17 * (3 + 5)?">calculator</span>
+      <span class="example-chip" data-task="What's the latest news on interest rates?">web_search</span>
+      <span class="example-chip" data-task="Write and run code to compute the 10th Fibonacci number">code_exec</span>
+    </div>
+    <div class="input-row">
+      <input type="text" id="task-input" placeholder="Message the agent…" />
+      <button id="run-btn">Run</button>
+    </div>
+  </div>
+
+  <footer>&copy; Anshuman Pandey</footer>
+
+</div>
+
+<script>
+  const API_URL = "";
+
+  const input = document.getElementById("task-input");
+  const btn = document.getElementById("run-btn");
+  const log = document.getElementById("log");
+  const placeholder = document.getElementById("placeholder");
+  const avatar = document.getElementById("avatar");
+  const themeToggle = document.getElementById("theme-toggle");
+  const themeIcon = document.getElementById("theme-icon");
+  const themeLabel = document.getElementById("theme-label");
+  const html = document.documentElement;
+
+  // ---------- theme toggle ----------
+  themeToggle.addEventListener("click", () => {
+    const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    html.setAttribute("data-theme", next);
+    themeIcon.textContent = next === "dark" ? "☾" : "☀";
+    themeLabel.textContent = next;
+  });
+
+  // ---------- ascii expressions ----------
+  const FACES = {
+    idle: "◕‿◕",
+    thinking: ["⊙﹏⊙", "◔_◔", "⊙‿⊙", "◔‿◔"],
+    success: "^‿^",
+    error: "×_×"
+  };
+  let thinkTimer = null;
+
+  function setFace(state) {
+    if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null; }
+    avatar.classList.toggle("thinking", state === "thinking");
+    if (state === "thinking") {
+      let i = 0;
+      avatar.textContent = FACES.thinking[0];
+      thinkTimer = setInterval(() => {
+        i = (i + 1) % FACES.thinking.length;
+        avatar.textContent = FACES.thinking[i];
+      }, 420);
+    } else {
+      avatar.textContent = FACES[state] || FACES.idle;
+    }
+  }
+
+  document.querySelectorAll(".example-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      input.value = chip.dataset.task;
+      input.focus();
+    });
+  });
+
+  btn.addEventListener("click", runTask);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") runTask(); });
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // Parses ```lang\ncode\n``` fenced blocks out of plain text and renders
+  // the rest as wrapped text, so code keeps its own scrollable, monospace
+  // block instead of dragging the whole bubble's scrollbar out of place.
+  function renderContent(container, text) {
+    container.innerHTML = "";
+    const regex = /```(\w+)?\n?([\s\S]*?)```/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        appendText(container, text.slice(lastIndex, match.index));
+      }
+      appendCode(container, match[2].replace(/\n$/, ""), match[1]);
+      lastIndex = regex.lastIndex;
+    }
+    
+    if (lastIndex < text.length) {
+      appendText(container, text.slice(lastIndex));
+    }
+  }
+
+  function appendText(container, str) {
+    if (str === "") return;
+    const span = document.createElement("span");
+    span.className = "msg-text";
+    span.textContent = str;
+    container.appendChild(span);
+  }
+
+  // Guards against answers that repeat their entire content once
+  // (e.g. "Donald Trump\nDonald Trump" or two identical paragraphs).
+  // If the non-empty lines split cleanly into two equal, identical
+  // halves, only the first half is kept.
+  function dedupeRepeatedAnswer(text) {
+    // Never touch text containing code fences — paragraph splitting
+    // would mangle indentation/formatting inside a code block.
+    if (text.includes("```")) return text;
+
+    const normalize = s => s.toLowerCase().replace(/\s+/g, " ").trim();
+
+    // Case 1: duplicated paragraphs separated by one or more newlines
+    // (the common case — same sentence/paragraph appears twice in a row).
+    const paras = text.split(/\n+/).map(p => p.trim()).filter(Boolean);
+    if (paras.length >= 2) {
+      const out = [];
+      for (const p of paras) {
+        const norm = normalize(p);
+        const lastNorm = out.length ? normalize(out[out.length - 1]) : null;
+        if (norm === lastNorm) continue; // skip immediate repeat
+        out.push(p);
+      }
+      if (out.length < paras.length) return out.join("\n\n");
+    }
+
+    // Case 2: the whole answer is one line, duplicated with no separator
+    // or a single joining character (space, "\n", etc).
+    const trimmed = text.trim();
+    const n = trimmed.length;
+    for (let sep = 0; sep <= 3; sep++) {
+      if (n - sep <= 0 || (n - sep) % 2 !== 0) continue;
+      const partLen = (n - sep) / 2;
+      const a = trimmed.slice(0, partLen).trim();
+      const b = trimmed.slice(partLen + sep).trim();
+      if (a.length > 0 && normalize(a) === normalize(b)) return a;
+    }
+
+    return text;
+  }
+
+  function appendCode(container, code, lang) {
+    const wrap = document.createElement("div");
+    wrap.className = "code-block-wrap";
+    const label = document.createElement("div");
+    label.className = "code-lang";
+    label.textContent = lang ? lang : "code";
+    const pre = document.createElement("pre");
+    pre.className = "code-block";
+    const codeEl = document.createElement("code");
+    codeEl.textContent = code;
+    pre.appendChild(codeEl);
+    wrap.appendChild(label);
+    wrap.appendChild(pre);
+    container.appendChild(wrap);
+  }
+
+  async function runTask() {
+    const task = input.value.trim();
+    if (!task) return;
+
+    if (placeholder) placeholder.remove();
+
+    btn.disabled = true;
+    setFace("thinking");
+    input.value = "";
+
+    const turn = document.createElement("div");
+    turn.className = "turn";
+    turn.innerHTML = `
+      <div class="msg-row user">
+        <div class="bubble user">${escapeHtml(task)}</div>
+      </div>
+      <div class="msg-row agent">
+        <div class="agent-avatar" id="row-avatar">⊙﹏⊙</div>
+        <div class="bubble agent" id="agent-bubble">
+          <div class="status-line">
+            <div class="dot thinking"></div>
+            <span>reasoning and calling tools…</span>
+          </div>
+        </div>
+      </div>`;
+    log.appendChild(turn);
+    log.scrollTop = log.scrollHeight;
+
+    const bubble = turn.querySelector("#agent-bubble");
+    const rowAvatar = turn.querySelector("#row-avatar");
+
+    let data;
+    let errorMsg = null;
+    try {
+      const res = await fetch(`${API_URL}/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task })
+      });
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+      data = await res.json();
+    } catch (err) {
+      errorMsg = err.message || String(err);
+    }
+
+    btn.disabled = false;
+
+    if (errorMsg) {
+      setFace("error");
+      rowAvatar.textContent = FACES.error;
+      bubble.innerHTML = `
+        <div class="status-line">
+          <div class="dot error"></div>
+          <span>${escapeHtml(errorMsg)}</span>
+        </div>`;
+      log.scrollTop = log.scrollHeight;
+      return;
+    }
+
+    setFace("success");
+    rowAvatar.textContent = FACES.success;
+    renderContent(bubble, dedupeRepeatedAnswer(String(data.final_answer)));
+
+    if (data.incomplete) {
+      const tag = document.createElement("p");
+      tag.className = "incomplete-tag";
+      tag.textContent = "stopped — step budget reached";
+      turn.appendChild(tag);
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "meta-row";
+    meta.innerHTML = `
+      <span><b>${data.steps_taken}</b> steps</span>
+      <span><b>${data.total_tokens}</b> tokens</span>
+      <span>run <b>${escapeHtml(String(data.run_id))}</b></span>`;
+    turn.appendChild(meta);
+
+    log.scrollTop = log.scrollHeight;
+    input.focus();
+
+    // settle back to idle face after a moment
+    setTimeout(() => { if (!thinkTimer) setFace("idle"); }, 2500);
+  }
+</script>
+</body>
+</html>
