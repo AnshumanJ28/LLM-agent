@@ -1,12 +1,14 @@
 # LLM Agent From Scratch
 
-### In a nutshel : Eh i skipped LangChan
+### In a nutshel : Eh I skipped LangChan
 ---
 A tool-using ReAct (Reason + Act) agent built **without any agent framework** — no
 LangChain, no LangGraph, no CrewAI. The reasoning loop, tool-schema generation,
 memory, evaluation harness, tracing, guardrails, and sandboxed code execution are
 all hand-rolled, to demonstrate a real understanding of agent internals rather than
 framework glue.
+
+[![Link](https://img.shields.io/badge/Demo-Live-success)](https://llm-agent-tez2.onrender.com)
 
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![Tests](https://img.shields.io/badge/tests-12%20passing-brightgreen)
