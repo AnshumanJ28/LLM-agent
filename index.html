@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LLM Agent — Live Demo</title>
+<style>
+  :root {
+    --bg: #12141A;
+    --surface: #191C24;
+    --border: #262A34;
+    --text-primary: #E8E6E1;
+    --text-muted: #6B7570;
+    --accent-orange: #E8873A;
+    --accent-green: #2FA875;
+    --accent-red: #D9534F;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 48px 20px;
+  }
+  .wrap { width: 100%; max-width: 680px; }
+  header { margin-bottom: 32px; }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--accent-orange);
+    text-transform: uppercase;
+    margin: 0 0 8px;
+  }
+  h1 { font-size: 24px; font-weight: 600; margin: 0 0 8px; }
+  .subtitle { color: var(--text-muted); font-size: 14px; margin: 0; }
+  .input-row { display: flex; gap: 10px; margin-bottom: 20px; }
+  input[type="text"] {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    padding: 12px 14px;
+    outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--accent-orange); }
+  input[type="text"]::placeholder { color: var(--text-muted); }
+  button {
+    background: var(--accent-orange);
+    color: #1a1206;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 14px;
+    padding: 0 22px;
+    cursor: pointer;
+  }
+  button:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+  .examples { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 32px; }
+  .example-chip {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .example-chip:hover { border-color: var(--accent-orange); color: var(--text-primary); }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    opacity: 0;
+    transform: translateY(6px);
+    animation: reveal 0.3s ease forwards;
+  }
+  @keyframes reveal { to { opacity: 1; transform: translateY(0); } }
+  .dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+  }
+  .dot.active { background: var(--accent-orange); box-shadow: 0 0 0 3px rgba(232,135,58,0.15); animation: pulse 1.1s ease-in-out infinite; }
+  .dot.done { background: var(--accent-green); }
+  .dot.error { background: var(--accent-red); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .status-text {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .final {
+    background: var(--surface);
+    border: 1px solid var(--accent-orange);
+    border-left: 3px solid var(--accent-orange);
+    border-radius: 8px;
+    padding: 18px 20px;
+    opacity: 0;
+    transform: translateY(6px);
+    animation: reveal 0.35s ease forwards;
+  }
+  .final-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent-orange);
+    margin: 0 0 10px;
+  }
+  .final-content { font-size: 16px; line-height: 1.6; margin: 0 0 16px; }
+  .stats {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+  .stat-value { font-family: var(--font-mono); font-size: 14px; }
+  .stat-value.green { color: var(--accent-green); }
+  .stat-value.orange { color: var(--accent-orange); }
+
+  .trace-note {
+    margin-top: 20px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .trace-note code {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+  .error-content { color: var(--text-primary); font-family: var(--font-mono); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Agent trace &mdash; live</p>
+    <h1>LLM agent from scratch</h1>
+    <p class="subtitle">Type a task and let the ReAct loop reason, act, and observe until it reaches an answer.</p>
+  </header>
+
+  <div class="input-row">
+    <input type="text" id="task-input" placeholder="What is 17 * (3 + 5)?" />
+    <button id="run-btn">Run</button>
+  </div>
+
+  <div class="examples">
+    <span class="example-chip" data-task="What is 17 * (3 + 5)?">calculator</span>
+    <span class="example-chip" data-task="What's the latest news on interest rates?">web_search</span>
+    <span class="example-chip" data-task="Write and run code to compute the 10th Fibonacci number">code_exec</span>
+  </div>
+
+  <div id="result"></div>
+
+  <p class="trace-note">
+    Want the full step-by-step reasoning trace for this run? Open the trace viewer
+    and look up the <code>run_id</code> shown above.
+  </p>
+</div>
+
+<script>
+  const API_URL = "";
+
+  const input = document.getElementById("task-input");
+  const btn = document.getElementById("run-btn");
+  const result = document.getElementById("result");
+
+  document.querySelectorAll(".example-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      input.value = chip.dataset.task;
+      input.focus();
+    });
+  });
+
+  btn.addEventListener("click", runTask);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") runTask(); });
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  async function runTask() {
+    const task = input.value.trim();
+    if (!task) return;
+
+    btn.disabled = true;
+    btn.textContent = "Running…";
+
+    result.innerHTML = `
+      <div class="status-row">
+        <div class="dot active"></div>
+        <p class="status-text">Agent is reasoning and calling tools…</p>
+      </div>`;
+
+    let data;
+    let errorMsg = null;
+    try {
+      const res = await fetch(`${API_URL}/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task })
+      });
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+      data = await res.json();
+    } catch (err) {
+      errorMsg = err.message || String(err);
+    }
+
+    btn.disabled = false;
+    btn.textContent = "Run";
+
+    if (errorMsg) {
+      result.innerHTML = `
+        <div class="status-row">
+          <div class="dot error"></div>
+          <p class="error-content">${escapeHtml(errorMsg)}</p>
+        </div>`;
+      return;
+    }
+
+    const incomplete = data.incomplete;
+    result.innerHTML = `
+      <div class="final">
+        <p class="final-label">${incomplete ? "Stopped (step budget reached)" : "Final answer"}</p>
+        <p class="final-content">${escapeHtml(String(data.final_answer))}</p>
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-label">Steps</span>
+            <span class="stat-value">${data.steps_taken}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Tokens</span>
+            <span class="stat-value orange">${data.total_tokens}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Run ID</span>
+            <span class="stat-value green">${escapeHtml(String(data.run_id))}</span>
+          </div>
+        </div>
+      </div>`;
+  }
+</script>
+</body>
+</html>
